@@ -6,13 +6,13 @@
 
 
 ## How to use the program
-1- download your transcript from [zc website](https://sisselfservice.zewailcity.edu.eg/PowerCampusSelfService/Grades/UnofficialTranscript)
+### 1- download your transcript from [zc website](https://sisselfservice.zewailcity.edu.eg/PowerCampusSelfService/Grades/UnofficialTranscript)
 ![Alt text](Screenshots/zc_website.png)
-2- Open the executable and select Open transcript file
+### 2- Open the executable and select Open transcript file
 ![Alt text](Screenshots/program_start.png)
-3- Browse and open the pdf file you download
+### 3- Browse and open the pdf file you download
 ![Alt text](Screenshots/open_file.png)
-4- You can now view and modify your transcript and see the reflections on the gpa
+### 4- You can now view and modify your transcript and see the reflections on the gpa
 ![Alt text](Screenshots/program.png)
 
 ## How to build manually
