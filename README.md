@@ -12,7 +12,8 @@
 ![Alt text](Screenshots/program_start.png)
 3- Browse and open the pdf file you download
 ![Alt text](Screenshots/open_file.png)
-4- Run the program
+4- You can now view and modify your transcript and see the reflections on the gpa
+![Alt text](Screenshots/program.png)
 
 ## How to build manually
 
