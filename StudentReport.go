@@ -19,6 +19,23 @@ func NewStudentReport(name string, major string, grades map[string]map[string]*C
     }
 }
 
+// make a copy of the student report
+func (sr * StudentReport) Copy() *StudentReport {
+    newGrades := make(map[string]map[string]*CourseGrade)
+    for term, courseGrades := range sr.Grades {
+        newGrades[term] = make(map[string]*CourseGrade)
+        for courseCode, courseGrade := range courseGrades {
+            newGrades[term][courseCode] = courseGrade.Copy()
+        }
+    }
+    return &StudentReport{
+        Name: sr.Name,
+        Major: sr.Major,
+        SemestersOrdered: sr.SemestersOrdered,
+        Grades: newGrades,
+    }
+}
+
 func (sr *StudentReport) PrintReport() {
     fmt.Printf("Student Name: %s\n", sr.Name)
     fmt.Println(sr.Major)

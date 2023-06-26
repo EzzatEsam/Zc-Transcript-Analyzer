@@ -6,7 +6,7 @@ type ReportAnalyzer struct {
 }
 
 
-func  (ra ReportAnalyzer)GetGpa(mapper AbstractCourseGradeMapper ) float64 {
+func  (ra *ReportAnalyzer)GetGpa(mapper AbstractCourseGradeMapper ) float64 {
     gradesDict := make(map[string]*CourseGrade)
 
     for _, termGrades := range ra.Report.Grades {
@@ -28,4 +28,23 @@ func  (ra ReportAnalyzer)GetGpa(mapper AbstractCourseGradeMapper ) float64 {
 
     fmt.Printf("Gpa : %.3f \n", gpa)
 	return gpa
+}
+
+func (ra *ReportAnalyzer) GetAcquiredCredits() int {
+    gradesDict := make(map[string]*CourseGrade)
+
+    for _, termGrades := range ra.Report.Grades {
+        for course, grade := range termGrades {
+            gradesDict[course] = grade
+        }
+    }
+
+    nonFulfillingGrades := []string{"F" ,"W" , "WP" , "WF"}
+    totalCreds := 0
+    for _, course := range gradesDict {
+        if !isIn(course.Grade, nonFulfillingGrades) {
+            totalCreds += course.Credits
+        }
+    }
+    return totalCreds
 }

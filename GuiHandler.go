@@ -6,14 +6,17 @@ import (
     "fyne.io/fyne/v2/app"
     "fyne.io/fyne/v2/container"
     "fyne.io/fyne/v2/widget"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
+	"image/color"
 	"strconv"
 	"os"
 )
 
 type GuiHandler struct {
 	report *StudentReport
+	oldReport *StudentReport
 	analyzer *ReportAnalyzer
 	app fyne.App
 	window fyne.Window
@@ -21,6 +24,7 @@ type GuiHandler struct {
 	tabs []*container.TabItem
 	//tabsDict map[string]*container.TabItem
 	gpaLabel *widget.Label
+	credsLabel *widget.Label
 }
 
 func NewGuiHandler() *GuiHandler {
@@ -29,11 +33,13 @@ func NewGuiHandler() *GuiHandler {
 	tabs := []*container.TabItem{}
 
 	gpaLabel := widget.NewLabelWithStyle("" , fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	credsLabel := widget.NewLabelWithStyle("" , fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	return &GuiHandler{
 		app: app,
 		window: win,
 		tabs: tabs,
 		gpaLabel: gpaLabel,
+		credsLabel: credsLabel,
 	}
 }
 
@@ -103,17 +109,24 @@ func (gh *GuiHandler) Start()  {
 }
 func (gh *GuiHandler) InitDisplay(report *StudentReport) {
 	gh.report = report
+	gh.oldReport = report.Copy()
 	gh.analyzer = &ReportAnalyzer{ Report: gh.report }
 	
 	gh.DrawTabs()
 
 	gh.tabsContainer = container.NewAppTabs(gh.tabs...)
-	content := container.NewVBox(gh.tabsContainer, gh.gpaLabel)
+	bottomBar := container.NewAdaptiveGrid(3, gh.gpaLabel,gh.credsLabel ,widget.NewButton("Reset", func() {
+		gh.Reset()
+	}))
+	content := container.NewVBox(gh.tabsContainer,canvas.NewLine(color.Gray{50}) ,bottomBar)
 	gh.window.SetContent(content)
 }
+
 func (gh *GuiHandler) UpdateGpa() {
 	gpa := gh.analyzer.GetGpa( &ZcCourseGradeMapper{} )
+	creds := gh.analyzer.GetAcquiredCredits()
 	gh.gpaLabel.SetText(fmt.Sprintf("GPA: %.3f", gpa))
+	gh.credsLabel.SetText(fmt.Sprintf("Acquired Credits: %d", creds))
 }
 
 func (gh *GuiHandler) DrawTabs() {
@@ -136,6 +149,8 @@ func (gh *GuiHandler) DrawTabs() {
 			widget.NewButton("Add Term", func() {
 				if gh.report.AddNewTerm(newTermEntry.Text) {
 					gh.RedrawTabs()
+					gh.tabsContainer.Select(gh.tabs[len(gh.tabs)-2])
+					
 				}
 			}),
 		),
@@ -146,9 +161,7 @@ func (gh *GuiHandler) DrawTabs() {
 func (gh *GuiHandler) RedrawTabs() {
 	gh.tabs = [] *container.TabItem{}
 	gh.DrawTabs()
-	gh.tabsContainer = container.NewAppTabs(gh.tabs...)
-	content := container.NewVBox(gh.tabsContainer, gh.gpaLabel)
-	gh.window.SetContent(content)
+	gh.tabsContainer.Items = gh.tabs
 }
 func (gh *GuiHandler) NewTab(term string , grades map[string]*CourseGrade) *container.TabItem {
 	items := []fyne.CanvasObject{widget.NewLabelWithStyle("Grades", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})}
@@ -167,7 +180,11 @@ func (gh *GuiHandler) NewTab(term string , grades map[string]*CourseGrade) *cont
 		newCourseCreditsEntry := widget.NewEntry()
 		
 		addNewCourseButton := widget.NewButton("Add Course", func() {
-			creds , _ := strconv.Atoi(newCourseCreditsEntry.Text)
+			creds , err := strconv.Atoi(newCourseCreditsEntry.Text)
+			if err != nil {
+				dialog.ShowError(err, gh.window)
+				return
+			}
 			newCourseGrade := &CourseGrade{
 				CourseCode: newCourseCodeEntry.Text,
 				Name: newCourseNameEntry.Text,
@@ -191,6 +208,7 @@ func (gh *GuiHandler) NewTab(term string , grades map[string]*CourseGrade) *cont
 			addNewCourseButton)
 			
 		items = append(items, container.NewVBox(
+			canvas.NewLine(color.Gray{50}) ,
 			widget.NewLabel("Add new") ,
 			cont,
 			))
@@ -218,8 +236,26 @@ func (gh *GuiHandler) NewCourseRow(term string, courseCode string, grade *Course
 	return  container.NewAdaptiveGrid(3,courseLabel, gradeEntry, updateButton)
 }
 	
+// AddCourseToTerm adds a course grade to the report for the given term and
+// redraws the tabs if successful.
+//
+// term string: the term to add the course to.
+// courseGrade *CourseGrade: the course grade to add to the report.
 func (gh *GuiHandler) AddCourseToTerm(term string , courseGrade *CourseGrade) {
 	if gh.report.AddCourseGrade(term , courseGrade) {
 		gh.RedrawTabs()
+		tabsIdx := Find(gh.report.SemestersOrdered, term)
+		gh.tabsContainer.Select(gh.tabs[tabsIdx])
 	}
+}
+
+// Reset resets the GuiHandler to its initial state by restoring the
+// original report and redrawing the tabs.
+//
+// No parameters.
+// No return type.
+func (gh *GuiHandler) Reset() {
+	gh.report = gh.oldReport.Copy()
+	gh.analyzer = &ReportAnalyzer{ Report: gh.report }
+	gh.RedrawTabs()
 }
