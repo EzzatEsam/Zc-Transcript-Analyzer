@@ -209,7 +209,7 @@ func (gh *GuiHandler) NewTab(term string , grades map[string]*CourseGrade) *cont
 			
 		items = append(items, container.NewVBox(
 			canvas.NewLine(color.Gray{50}) ,
-			widget.NewLabel("Add new") ,
+			widget.NewLabelWithStyle("Add new" , fyne.TextAlignCenter, fyne.TextStyle{Bold: true}), 
 			cont,
 			))
 		return container.NewTabItem(term, container.NewVBox(items...))
