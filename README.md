@@ -14,6 +14,9 @@
 ![Alt text](Screenshots/open_file.png)
 ### 4- You can now view and modify your transcript and see the reflections on the gpa
 ![Alt text](Screenshots/program.png)
+![Alt text](Screenshots/program_dark.png)
+
+
 
 ## How to build manually
 - If you don't have Fyne library installed 
