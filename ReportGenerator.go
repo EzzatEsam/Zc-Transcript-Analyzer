@@ -23,7 +23,7 @@ func (zce *ZcDataExtractor) GenerateDataFromPdf(reader Reader) error {
     }
 
     lines := strings.Split(text, "\n")
-
+    
     zce.StudentName = lines[6]
 
     report := NewStudentReport(zce.StudentName, "", make(map[string]map[string]*CourseGrade))

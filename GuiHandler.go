@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
+	"fyne.io/fyne/v2/theme"
 	"image/color"
 	"strconv"
 	"os"
@@ -104,7 +105,8 @@ func (gh *GuiHandler) Start()  {
 			gh.InitDisplay(report)
 		}),
 	))
-	gh.window.Resize(fyne.NewSize(1200, 500))
+	gh.window.Resize(fyne.NewSize(1200, 630))
+	gh.window.CenterOnScreen()
 	gh.window.ShowAndRun()
 }
 func (gh *GuiHandler) InitDisplay(report *StudentReport) {
@@ -112,13 +114,37 @@ func (gh *GuiHandler) InitDisplay(report *StudentReport) {
 	gh.oldReport = report.Copy()
 	gh.analyzer = &ReportAnalyzer{ Report: gh.report }
 	
+	topBar := container.NewAdaptiveGrid( 
+		2,
+		container.NewAdaptiveGrid(
+			1, 
+			widget.NewLabelWithStyle(gh.report.Name, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		),
+		container.NewAdaptiveGrid(
+			2,
+			widget.NewButton("Light" , func() {
+				gh.app.Settings().SetTheme(theme.LightTheme())
+				// ugly hack for now
+				gh.tabsContainer.OnSelected = func(tab *container.TabItem) {
+					gh.app.Settings().SetTheme(theme.LightTheme())
+				}
+			}),
+			widget.NewButton("Dark" , func() {
+				gh.app.Settings().SetTheme(theme.DarkTheme())
+				// ugly hack for now
+				gh.tabsContainer.OnSelected = func(tab *container.TabItem) {
+					gh.app.Settings().SetTheme(theme.DarkTheme())
+				}
+			}),
+		),
+	)
 	gh.DrawTabs()
 
 	gh.tabsContainer = container.NewAppTabs(gh.tabs...)
 	bottomBar := container.NewAdaptiveGrid(3, gh.gpaLabel,gh.credsLabel ,widget.NewButton("Reset", func() {
 		gh.Reset()
 	}))
-	content := container.NewVBox(gh.tabsContainer,canvas.NewLine(color.Gray{50}) ,bottomBar)
+	content := container.NewVBox(topBar ,gh.tabsContainer,canvas.NewLine(color.Gray{50}) ,bottomBar)
 	gh.window.SetContent(content)
 }
 
@@ -135,7 +161,7 @@ func (gh *GuiHandler) DrawTabs() {
 	terms := gh.report.SemestersOrdered
 	for _,term := range terms {
 		grades := gh.report.Grades[term]
-		fmt.Println(term)
+		//fmt.Println(term)
 		tab := gh.NewTab(term, grades)
 		gh.tabs = append(gh.tabs, tab)
 	}
@@ -144,7 +170,7 @@ func (gh *GuiHandler) DrawTabs() {
 	appendTab := container.NewTabItem(
 		"New Term",
 		container.NewVBox(
-			widget.NewLabel("Term title") ,
+			widget.NewLabelWithStyle("Term title" , fyne.TextAlignCenter, fyne.TextStyle{Bold: true}) ,
 			newTermEntry,
 			widget.NewButton("Add Term", func() {
 				if gh.report.AddNewTerm(newTermEntry.Text) {
@@ -164,8 +190,16 @@ func (gh *GuiHandler) RedrawTabs() {
 	gh.tabsContainer.Items = gh.tabs
 }
 func (gh *GuiHandler) NewTab(term string , grades map[string]*CourseGrade) *container.TabItem {
-	items := []fyne.CanvasObject{widget.NewLabelWithStyle("Grades", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})}
+	items := []fyne.CanvasObject{}
+	topBar := container.NewAdaptiveGrid(
+		4, 
+		widget.NewLabelWithStyle("Course Code", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("Course name", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("Credits", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("Grade", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+	)
 	
+	items = append(items, topBar)
 		for courseCode, grade := range grades {
 			item := gh.NewCourseRow( term,courseCode, grade)
 			items = append(items, item)
@@ -175,7 +209,8 @@ func (gh *GuiHandler) NewTab(term string , grades map[string]*CourseGrade) *cont
 		
 		newCourseNameEntry := widget.NewEntry()
 		
-		newCourseGradeEntry := widget.NewEntry()
+		newCourseGradeEntry := widget.NewSelect([]string{ "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "F"}, func(s string) {
+		})
 		
 		newCourseCreditsEntry := widget.NewEntry()
 		
@@ -188,28 +223,32 @@ func (gh *GuiHandler) NewTab(term string , grades map[string]*CourseGrade) *cont
 			newCourseGrade := &CourseGrade{
 				CourseCode: newCourseCodeEntry.Text,
 				Name: newCourseNameEntry.Text,
-				Grade: newCourseGradeEntry.Text,
+				Grade: newCourseGradeEntry.Selected,
 				Credits:  creds,
 			}
 
 			gh.AddCourseToTerm(term, newCourseGrade)
 			
 		})
-		cont := container.NewAdaptiveGrid(
-			9,
+		addLabels := container.NewAdaptiveGrid(
+			5 ,
 			widget.NewLabel("Course code") ,
-			newCourseCodeEntry,
 			widget.NewLabel("Course name"),
-			newCourseNameEntry,
 			widget.NewLabel("Credits"),
-			newCourseCreditsEntry,
 			widget.NewLabel("Grade"),
+		)
+		cont := container.NewAdaptiveGrid(
+			5,
+			newCourseCodeEntry,
+			newCourseNameEntry,
+			newCourseCreditsEntry,
 			newCourseGradeEntry,
 			addNewCourseButton)
 			
 		items = append(items, container.NewVBox(
 			canvas.NewLine(color.Gray{50}) ,
 			widget.NewLabelWithStyle("Add new" , fyne.TextAlignCenter, fyne.TextStyle{Bold: true}), 
+			addLabels ,
 			cont,
 			))
 		return container.NewTabItem(term, container.NewVBox(items...))
@@ -217,23 +256,20 @@ func (gh *GuiHandler) NewTab(term string , grades map[string]*CourseGrade) *cont
 }
 
 func (gh *GuiHandler) NewCourseRow(term string, courseCode string, grade *CourseGrade) *fyne.Container {
-	courseLabel := widget.NewLabel(fmt.Sprintf("%-10s (%s)  Credits: %d", courseCode, grade.Name, grade.Credits))
-	gradeEntry := widget.NewEntry()
-	gradeEntry.Text = grade.Grade
 	thatCourse := courseCode
 	thatSemester := term
-	updateButton := widget.NewButton("Update", func() {
-		newGradeLetter := gradeEntry.Text
-		
-		fmt.Println(thatSemester, thatCourse, newGradeLetter)
-		newCourseGrade := gh.report.ModifySemesterCourseGrade( thatSemester,thatCourse, newGradeLetter)
-
-		
-		courseLabel.SetText(fmt.Sprintf("%-10s (%s) , Credits: %d", thatCourse, newCourseGrade.Name, newCourseGrade.Credits))
+	//courseLabel := widget.NewLabel(fmt.Sprintf("%-10s (%s)  Credits: %d", courseCode, grade.Name, grade.Credits))
+	CourseCodeLabel := widget.NewLabelWithStyle(courseCode , fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	courseNameLabel := widget.NewLabel(grade.Name)
+	courseCreditsLabel := widget.NewLabel(fmt.Sprintf("%d", grade.Credits))
+	gradeEntry := widget.NewSelect([]string{ "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "F"}, func(s string) {
+		newGradeLetter := s
+		gh.report.ModifySemesterCourseGrade( thatSemester,thatCourse, newGradeLetter)
 		gh.UpdateGpa()
 	})
-
-	return  container.NewAdaptiveGrid(3,courseLabel, gradeEntry, updateButton)
+	gradeEntry.Selected = grade.Grade
+	
+	return  container.NewAdaptiveGrid(4,CourseCodeLabel,courseNameLabel ,courseCreditsLabel,gradeEntry)
 }
 	
 // AddCourseToTerm adds a course grade to the report for the given term and
@@ -258,4 +294,7 @@ func (gh *GuiHandler) Reset() {
 	gh.report = gh.oldReport.Copy()
 	gh.analyzer = &ReportAnalyzer{ Report: gh.report }
 	gh.RedrawTabs()
+
 }
+
+
