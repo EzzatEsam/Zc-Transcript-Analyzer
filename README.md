@@ -27,7 +27,7 @@
 ```bash
  fyne install
 ```
-## Or you can just download the latest release available (currently it's still in beta)
+## Or you can just download the latest release available 
 - [Windows build](https://github.com/EzzatEsam/Zc-Transcript-Analyzer/releases/tag/release)
 
 

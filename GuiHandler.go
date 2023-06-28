@@ -25,6 +25,8 @@ type GuiHandler struct {
 	tabs []*container.TabItem
 	//tabsDict map[string]*container.TabItem
 	gpaLabel *widget.Label
+	termGpaLabel *widget.Label
+	specialGpaLabel *widget.Label
 	credsLabel *widget.Label
 }
 
@@ -34,12 +36,16 @@ func NewGuiHandler() *GuiHandler {
 	tabs := []*container.TabItem{}
 
 	gpaLabel := widget.NewLabelWithStyle("" , fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	termGpaLabel := widget.NewLabelWithStyle("" , fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	specialGpaLabel := widget.NewLabelWithStyle("" , fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	credsLabel := widget.NewLabelWithStyle("" , fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	return &GuiHandler{
 		app: app,
 		window: win,
 		tabs: tabs,
 		gpaLabel: gpaLabel,
+		termGpaLabel: termGpaLabel,
+		specialGpaLabel: specialGpaLabel,
 		credsLabel: credsLabel,
 	}
 }
@@ -105,7 +111,7 @@ func (gh *GuiHandler) Start()  {
 			gh.InitDisplay(report)
 		}),
 	))
-	gh.window.Resize(fyne.NewSize(1200, 630))
+	gh.window.Resize(fyne.NewSize(1300, 630))
 	gh.window.CenterOnScreen()
 	gh.window.ShowAndRun()
 }
@@ -126,6 +132,7 @@ func (gh *GuiHandler) InitDisplay(report *StudentReport) {
 				gh.app.Settings().SetTheme(theme.LightTheme())
 				// ugly hack for now
 				gh.tabsContainer.OnSelected = func(tab *container.TabItem) {
+					gh.UpdateSemesterGpa()
 					gh.app.Settings().SetTheme(theme.LightTheme())
 				}
 			}),
@@ -133,15 +140,21 @@ func (gh *GuiHandler) InitDisplay(report *StudentReport) {
 				gh.app.Settings().SetTheme(theme.DarkTheme())
 				// ugly hack for now
 				gh.tabsContainer.OnSelected = func(tab *container.TabItem) {
+					gh.UpdateSemesterGpa()
 					gh.app.Settings().SetTheme(theme.DarkTheme())
 				}
 			}),
 		),
 	)
+	
 	gh.DrawTabs()
 
 	gh.tabsContainer = container.NewAppTabs(gh.tabs...)
-	bottomBar := container.NewAdaptiveGrid(3, gh.gpaLabel,gh.credsLabel ,widget.NewButton("Reset", func() {
+	gh.termGpaLabel.SetText(fmt.Sprintf("Term GPA: %.3f", gh.analyzer.GetTermGpa(gh.tabs[0].Text, &ZcCourseGradeMapper{})))
+	gh.tabsContainer.OnSelected = func(tab *container.TabItem) {
+		gh.UpdateSemesterGpa()
+	}
+	bottomBar := container.NewAdaptiveGrid(5, gh.termGpaLabel ,gh.gpaLabel,gh.specialGpaLabel ,gh.credsLabel ,widget.NewButton("Reset", func() {
 		gh.Reset()
 	}))
 	content := container.NewVBox(topBar ,gh.tabsContainer,canvas.NewLine(color.Gray{50}) ,bottomBar)
@@ -150,14 +163,19 @@ func (gh *GuiHandler) InitDisplay(report *StudentReport) {
 
 func (gh *GuiHandler) UpdateGpa() {
 	gpa := gh.analyzer.GetGpa( &ZcCourseGradeMapper{} )
+	specialGpa , err := gh.analyzer.GetSpecialGpa( &ZcCourseGradeMapper{})
 	creds := gh.analyzer.GetAcquiredCredits()
-	gh.gpaLabel.SetText(fmt.Sprintf("GPA: %.3f", gpa))
+	gh.gpaLabel.SetText(fmt.Sprintf("Cumulative GPA: %.3f", gpa))
+
 	gh.credsLabel.SetText(fmt.Sprintf("Acquired Credits: %d", creds))
+	if  err == nil {
+		gh.specialGpaLabel.SetText(fmt.Sprintf("Special GPA: %.3f", specialGpa))
+	}
+	
 }
 
 func (gh *GuiHandler) DrawTabs() {
-
-	gh.UpdateGpa()	
+	gh.UpdateGpa()
 	terms := gh.report.SemestersOrdered
 	for _,term := range terms {
 		grades := gh.report.Grades[term]
@@ -187,6 +205,7 @@ func (gh *GuiHandler) DrawTabs() {
 func (gh *GuiHandler) RedrawTabs() {
 	gh.tabs = [] *container.TabItem{}
 	gh.DrawTabs()
+	gh.UpdateSemesterGpa()
 	gh.tabsContainer.Items = gh.tabs
 }
 func (gh *GuiHandler) NewTab(term string , grades map[string]*CourseGrade) *container.TabItem {
@@ -251,6 +270,7 @@ func (gh *GuiHandler) NewTab(term string , grades map[string]*CourseGrade) *cont
 			addLabels ,
 			cont,
 			))
+			
 		return container.NewTabItem(term, container.NewVBox(items...))
 		
 }
@@ -266,6 +286,7 @@ func (gh *GuiHandler) NewCourseRow(term string, courseCode string, grade *Course
 		newGradeLetter := s
 		gh.report.ModifySemesterCourseGrade( thatSemester,thatCourse, newGradeLetter)
 		gh.UpdateGpa()
+		gh.UpdateSemesterGpa()
 	})
 	gradeEntry.Selected = grade.Grade
 	
@@ -294,7 +315,13 @@ func (gh *GuiHandler) Reset() {
 	gh.report = gh.oldReport.Copy()
 	gh.analyzer = &ReportAnalyzer{ Report: gh.report }
 	gh.RedrawTabs()
+}
 
+func (gh *GuiHandler) UpdateSemesterGpa()  {
+	tab := gh.tabsContainer.CurrentTab()
+	term := tab.Text
+	termGpa := gh.analyzer.GetTermGpa( term ,&ZcCourseGradeMapper{})
+	gh.termGpaLabel.SetText(fmt.Sprintf("Term GPA: %.3f", termGpa))
 }
 
 
