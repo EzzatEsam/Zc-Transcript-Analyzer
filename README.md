@@ -28,7 +28,7 @@
  fyne install
 ```
 ## Or you can just download the latest release available 
-- [Windows build](https://github.com/EzzatEsam/Zc-Transcript-Analyzer/releases/tag/release)
+- [Windows build](https://github.com/EzzatEsam/Zc-Transcript-Analyzer/releases/tag/v1.2)
 
 
 ## License
